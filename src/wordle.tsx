@@ -12,24 +12,23 @@ const getRandomWord = (words: string[]): string => {
 const Wordle: React.FC<WordleProps> = ({ words }) => {
   // Tracks the words used from the word pool.
   const [usedWords, setUsedWords] = useState<string[]>(() => [getRandomWord(words)]);
-
-  // Tracks the users submitted answers.
-  const [answers, setAnswers] = useState<string[]>([]);
-
+  // Maps each answer to a map of letter positions and whether they matched the current word.
+  const [wordMatchMaps, setWordMatchMaps] = useState<Record<string, Record<string, Record<number, boolean>>>>({});
   // What the user typed in but has not yet submitted.
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
 
-  const [gameCompleted, setGameCompleted] = useState<boolean>(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  const currentWord = usedWords[usedWords.length - 1];
+  const wordToSolve = usedWords.at(-1) || "";
+  const answers = Object.keys(wordMatchMaps);
+  const wordSolved = answers.includes(wordToSolve);
   const noOfAttempts = answers.length;
   const noMoreAttempts = noOfAttempts >= 6;
-  const gameFinished = gameCompleted || noMoreAttempts;
+  const gameFinished = wordSolved || noMoreAttempts;
   const wordEntryIncomplete = currentAnswer.length < 5;
   const noEntryMade = currentAnswer.length === 0;
   const showLetterPlaceHolder = !gameFinished && noEntryMade;
   const showLetterEntry = !gameFinished && !noEntryMade;
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // New Game started. Get another random word.
   const getNewWord = () => {
@@ -42,14 +41,38 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
     return newWord;
   };
 
-  const submitWord = useCallback(() => {
-    setAnswers((prev) => [...prev, currentAnswer]);
-    setCurrentAnswer("");
+  /**
+   * This function creates a map of each unique letter in the word and the indexes they are in.
+   * For example, for the word "apple", if the answer was "adore" the map would look like:
+   * {
+   *   a: { 0: true },
+   *   p: { 1: false, 2: false },
+   *   l: { 3: false },
+   *   e: { 4: true }
+   * }
+   */
+  const getAnswerMatchMap = useCallback(
+    (answer: string) =>
+      Array.from(wordToSolve).reduce(
+        (acc, char, index) => {
+          const matchedInAnswer = Array.from(answer)[index] === char;
+          if (!acc[char]) acc[char] = {};
+          acc[char][index] = matchedInAnswer;
+          return acc;
+        },
+        {} as Record<string, Record<number, boolean>>,
+      ),
+    [wordToSolve],
+  );
 
-    if (currentAnswer === currentWord) {
-      setGameCompleted(true);
-    }
-  }, [currentAnswer, currentWord]);
+  const submitWord = useCallback(() => {
+    setWordMatchMaps((prev) => ({
+      ...prev,
+      [currentAnswer]: getAnswerMatchMap(currentAnswer),
+    }));
+
+    setCurrentAnswer("");
+  }, [currentAnswer, getAnswerMatchMap]);
 
   useEffect(() => {
     // Blur any focused button when user starts typing so enter key works for submission only
@@ -62,11 +85,13 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
     }
   }, [currentAnswer]);
 
+  // Focus the hidden input when the user clicks/taps anywhere on the game layer
   const focusInput = useCallback(() => {
     if (gameFinished) return;
     inputRef.current?.focus();
   }, [gameFinished]);
 
+  // Handle input change for typing letters
   const handleInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       if (gameFinished) return;
@@ -80,6 +105,7 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
     [gameFinished],
   );
 
+  // Handle key down for Enter key submission
   const handleInputKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (gameFinished) return;
@@ -91,6 +117,11 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
     [currentAnswer.length, gameFinished, submitWord],
   );
 
+  /** Global keydown listener for capturing keyboard input.
+   * This was the original solution before adding the hidden input field.
+   * The hidden input field was added to improve mobile device support because
+   *  a mobile device virtual keyboard typically only shows when an input field is focused.
+   * */
   useEffect(() => {
     const getInput = (event: KeyboardEvent) => {
       if (gameFinished) return;
@@ -122,66 +153,34 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
     };
   }, [currentAnswer, gameFinished, submitWord]);
 
-  /**
-   * This function creates a map of each unique letter in the word and the indexes they are in.
-   * For example, for the word "apple", if the answer was "adore" the map would look like:
-   * {
-   *   a: { 0: true },
-   *   p: { 1: false, 2: false },
-   *   l: { 3: false },
-   *   e: { 4: true }
-   * }
-   */
-  const getAnswerMatchMap = useCallback(
-    (answer: string) =>
-      Array.from(currentWord).reduce(
-        (acc, char, index) => {
-          const matchedInAnswer = Array.from(answer)[index] === char;
-          if (!acc[char]) acc[char] = {};
-          acc[char][index] = matchedInAnswer;
-          return acc;
-        },
-        {} as Record<string, Record<number, boolean>>,
-      ),
-    [currentWord],
-  );
-
   const getLetterBoxColorClass = useCallback(
     (answer: string, char: string, index: number): string => {
       if (!answer || !char) return "";
 
-      // Count occurrences of letter in word to guess
-      const letterOccurrence = (currentWord.match(new RegExp(char, "gi")) || []).length;
+      // Get map of character matches for the answer.
+      const charPosMap = wordMatchMaps[answer] ? wordMatchMaps[answer][char] : undefined;
 
-      // Only attempt to color if letter is in the word
-      if (letterOccurrence >= 1) {
-        // Get map of character matches for the answer
-        const answerMatchMap = getAnswerMatchMap(answer);
-        const charPosMap = answerMatchMap[char];
+      // Only attempt to color if letter is in the word.
+      if (charPosMap) {
+        // Letter is in the correct position.
+        const isInCorrectPosition = Boolean(charPosMap[index]);
+        if (isInCorrectPosition) return "greenLetterBox";
 
-        if (charPosMap) {
-          // letter is in the correct position
-          const isInCorrectPosition = Boolean(charPosMap[index]);
-          if (isInCorrectPosition) return "greenLetterBox";
-
-          // letter is in the word but not in the correct position - are there available positions?
-          const openPositionsInWord = Object.values(charPosMap).some((position) => position === false);
-          if (openPositionsInWord) return "yellowLetterBox";
-        }
+        // Letter is in the word but at another position AND that position is not already matched by the same letter.
+        const openPositionsInWord = Object.values(charPosMap).some((position) => position === false);
+        if (openPositionsInWord) return "yellowLetterBox";
       }
 
-      // letter not in word
+      // Letter not in word.
       return "";
     },
-    [getAnswerMatchMap, currentWord],
+    [wordMatchMaps],
   );
 
   const resetGameHandler = () => {
     const newWord = getNewWord();
     setUsedWords((prev) => [...prev, newWord]);
-    setAnswers([]);
     setCurrentAnswer("");
-    setGameCompleted(false);
   };
 
   return (
@@ -202,10 +201,10 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
       />
       {!gameFinished && <div className="currentWordHint">{usedWords[usedWords.length - 1]?.toUpperCase()}</div>}
       <div className="title">fWORDLE</div>
-      {gameCompleted && <div className="status">🎉 You won! 🎉</div>}
+      {wordSolved && <div className="status">🎉 You won! 🎉</div>}
       {noMoreAttempts && (
         <>
-          <div className="wordReveal">{currentWord.toUpperCase()}</div>
+          <div className="wordReveal">{wordToSolve.toUpperCase()}</div>
           <div className="status">Sorry. No more attempts.</div>
         </>
       )}
