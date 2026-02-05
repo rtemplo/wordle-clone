@@ -9,12 +9,15 @@ const getRandomWord = (): string => {
 
 function App() {
   const [usedWords, setUsedWords] = useState<string[]>(() => [getRandomWord()]);
+  // const [usedWords, setUsedWords] = useState<string[]>(["apply"]);
   const [answers, setAnswers] = useState<string[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
   const [gameCompleted, setGameCompleted] = useState<boolean>(false);
 
-  const currentAnswerLetters = currentAnswer.split("");
+  const currentAnswerLetters = Array.from(currentAnswer);
   const currentWordIndex = usedWords.length - 1;
+  const currentWord = usedWords[currentWordIndex];
+  const currentWordLetters = Array.from(currentWord);
   const attempts = answers.length;
 
   const getNewWord = () => {
@@ -81,26 +84,49 @@ function App() {
     setAnswers((prev) => [...prev, currentAnswer]);
     setCurrentAnswer("");
 
-    if (currentAnswer === usedWords[currentWordIndex]) {
+    if (currentAnswer === currentWord) {
       setGameCompleted(true);
     }
-  }, [currentAnswer, usedWords, currentWordIndex]);
+  }, [currentAnswer, currentWord]);
+
+  const getAnswerMatchMap = useCallback(
+    (answer: string) =>
+      currentWordLetters.reduce(
+        (acc, char, index) => {
+          const matchedInAnswer = Array.from(answer)[index] === char ? true : false;
+          return acc[char]
+            ? { ...acc, [char]: { ...acc[char], [index]: matchedInAnswer } }
+            : { ...acc, [char]: { [index]: matchedInAnswer } };
+        },
+        {} as Record<string, Record<number, boolean>>,
+      ),
+    [currentWordLetters],
+  );
 
   const getLetterBoxColorClass = useCallback(
-    (char: string = "", index: number): string => {
-      if (char === "") return "";
+    (answer: string, char: string, index: number): string => {
+      if (!answer || !char) return "";
 
-      const isInCurrentWord = usedWords[currentWordIndex].includes(char.toLowerCase());
-      const isInCorrectPosition = char.toLowerCase() === usedWords[currentWordIndex][index];
+      const charOccurence = (currentWord.match(new RegExp(char, "gi")) || []).length;
 
-      if (isInCorrectPosition) {
-        return "greenLetterBox";
-      } else if (isInCurrentWord) {
-        return "yellowLetterBox";
+      if (charOccurence >= 1) {
+        const answerMatchMap = getAnswerMatchMap(answer);
+        const charPosMap = answerMatchMap[char];
+
+        if (charPosMap) {
+          const isInCorrectPosition = Boolean(charPosMap[index]);
+          if (isInCorrectPosition) return "greenLetterBox";
+
+          const openCharPositions = Object.values(charPosMap).some((position) => position === false);
+          const availableInWord = !isInCorrectPosition && char in answerMatchMap && openCharPositions;
+
+          if (availableInWord) return "yellowLetterBox";
+        }
       }
+
       return "";
     },
-    [usedWords, currentWordIndex],
+    [getAnswerMatchMap, currentWord],
   );
 
   const disableSubmit = currentAnswer.length < 5;
@@ -131,16 +157,16 @@ function App() {
         {gameCompleted && <div className="status">You won!</div>}
         {attempts >= 6 && <div className="status">Sorry. No more attempts.</div>}
         <div className="wordGrid">
-          {answers.map((word, wordIndex) => (
+          {answers.map((answer, wordIndex) => (
             <div className="word">
-              {word
+              {answer
                 .toUpperCase()
                 .split("")
-                .map((char, index) => {
-                  const colorClass = getLetterBoxColorClass(char, index);
+                .map((char, charIndex) => {
+                  const colorClass = getLetterBoxColorClass(answer, char.toLowerCase(), charIndex);
 
                   return (
-                    <div key={`ans_${wordIndex}_${char}_${index}`} className={`letterBox ${colorClass}`}>
+                    <div key={`ans_${wordIndex}_${char}_${charIndex}`} className={`letterBox ${colorClass}`}>
                       {char}
                     </div>
                   );
@@ -160,15 +186,11 @@ function App() {
             <div className="word">
               {Array(5)
                 .fill(null)
-                .map((_nullChar, index) => {
-                  const colorClass = getLetterBoxColorClass(currentAnswerLetters[index], index);
-
-                  return (
-                    <div key={index} className={`letterBox ${colorClass}`}>
-                      {currentAnswerLetters[index] ? currentAnswerLetters[index].toUpperCase() : ""}
-                    </div>
-                  );
-                })}
+                .map((_nullChar, index) => (
+                  <div key={index} className="letterBox">
+                    {currentAnswerLetters[index] ? currentAnswerLetters[index].toUpperCase() : ""}
+                  </div>
+                ))}
             </div>
           )}
         </div>
