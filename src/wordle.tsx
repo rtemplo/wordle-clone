@@ -170,13 +170,13 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
         const charPosMap = answerMatchMap[char];
 
         if (charPosMap) {
+          // letter is in the correct position
           const isInCorrectPosition = Boolean(charPosMap[index]);
           if (isInCorrectPosition) return "greenLetterBox";
 
-          const openCharPositions = Object.values(charPosMap).some((position) => position === false);
-          const availableInWord = !isInCorrectPosition && char in answerMatchMap && openCharPositions;
-
-          if (availableInWord) return "yellowLetterBox";
+          // letter is in the word but not in the correct position - are there available positions?
+          const openPositionsInWord = Object.values(charPosMap).some((position) => position === false);
+          if (openPositionsInWord) return "yellowLetterBox";
         }
       }
 
