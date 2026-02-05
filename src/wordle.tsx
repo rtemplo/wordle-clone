@@ -218,7 +218,7 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
       )}
       <div className="wordGrid">
         {answers.map((answer, wordIndex) => (
-          <div key={answer} className="word">
+          <div key={`${answer}_${wordIndex}`} className="word">
             {Array.from(answer).map((char, charIndex) => {
               const colorClass = getLetterBoxColorClass(answer, char.toLowerCase(), charIndex);
 
