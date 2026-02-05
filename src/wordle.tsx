@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./wordle.css";
 
 interface WordleProps {
@@ -17,6 +17,7 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   // What the user typed in but has not yet submitted.
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
   const [gameCompleted, setGameCompleted] = useState<boolean>(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const currentWord = usedWords[usedWords.length - 1];
   const noOfAttempts = answers.length;
@@ -49,14 +50,48 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
 
   useEffect(() => {
     // Blur any focused button when user starts typing so enter key works for submission only
-    if (currentAnswer.length > 0 && document.activeElement instanceof HTMLElement) {
+    if (
+      currentAnswer.length > 0 &&
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement !== inputRef.current
+    ) {
       document.activeElement.blur();
     }
   }, [currentAnswer]);
 
+  const focusInput = useCallback(() => {
+    if (gameFinished) return;
+    inputRef.current?.focus();
+  }, [gameFinished]);
+
+  const handleInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (gameFinished) return;
+
+      const cleaned = event.target.value
+        .replace(/[^a-zA-Z]/g, "")
+        .toLowerCase()
+        .slice(0, 5);
+      setCurrentAnswer(cleaned);
+    },
+    [gameFinished],
+  );
+
+  const handleInputKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (gameFinished) return;
+
+      if (event.key === "Enter" && currentAnswer.length === 5) {
+        submitWord();
+      }
+    },
+    [currentAnswer.length, gameFinished, submitWord],
+  );
+
   useEffect(() => {
     const getInput = (event: KeyboardEvent) => {
       if (gameFinished) return;
+      if (document.activeElement === inputRef.current) return;
 
       const key = event.key;
 
@@ -157,7 +192,21 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   };
 
   return (
-    <div className="gameLayer" style={{ position: "relative" }}>
+    <div className="gameLayer" style={{ position: "relative" }} onPointerDown={focusInput}>
+      <input
+        ref={inputRef}
+        className="hiddenInput"
+        type="text"
+        inputMode="text"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="none"
+        spellCheck={false}
+        aria-label="Word entry"
+        value={currentAnswer}
+        onChange={handleInputChange}
+        onKeyDown={handleInputKeyDown}
+      />
       {!gameFinished && <div className="currentWordHint">{usedWords[usedWords.length - 1]?.toUpperCase()}</div>}
       <div className="title">fWORDLE</div>
       {gameCompleted && <div className="status">🎉 You won! 🎉</div>}
