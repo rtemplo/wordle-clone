@@ -171,7 +171,10 @@ function App() {
 				<div className="title">fWORDLE</div>
 				{gameCompleted && <div className="status">🎉 You won! 🎉</div>}
 				{attempts >= 6 && (
-					<div className="status">Sorry. No more attempts.</div>
+					<>
+						<div className="wordReveal">{currentWord.toUpperCase()}</div>
+						<div className="status">Sorry. No more attempts.</div>
+					</>
 				)}
 				<div className="wordGrid">
 					{answers.map((answer, wordIndex) => (
