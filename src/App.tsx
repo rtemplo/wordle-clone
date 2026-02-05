@@ -9,7 +9,6 @@ const getRandomWord = (): string => {
 
 function App() {
   const [usedWords, setUsedWords] = useState<string[]>(() => [getRandomWord()]);
-  // const [usedWords, setUsedWords] = useState<string[]>(["apply"]);
   const [answers, setAnswers] = useState<string[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
   const [gameCompleted, setGameCompleted] = useState<boolean>(false);
@@ -34,8 +33,6 @@ function App() {
     (event: KeyboardEvent) => {
       if (gameCompleted) return;
 
-      console.log("Key received in getInput:", event.key);
-      console.log("Current answer before processing:", currentAnswer);
       const key = event.key;
 
       // Ignore Enter if current answer is less than 5 letters
@@ -135,26 +132,9 @@ function App() {
   return (
     <div className="container">
       <div className="gameLayer" style={{ position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            top: "10px",
-            right: "10px",
-            padding: "10px 15px",
-            backgroundColor: "#333",
-            color: "transparent",
-            borderRadius: "5px",
-            cursor: "help",
-            userSelect: "none",
-            transition: "color 0.3s",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "transparent")}
-        >
-          {usedWords[usedWords.length - 1]?.toUpperCase()}
-        </div>
-        <div className="title">WORDLE Clone</div>
-        {gameCompleted && <div className="status">You won!</div>}
+        <div className="currentWordHint">{usedWords[usedWords.length - 1]?.toUpperCase()}</div>
+        <div className="title">fWORDLE</div>
+        {gameCompleted && <div className="status">🎉 You won! 🎉</div>}
         {attempts >= 6 && <div className="status">Sorry. No more attempts.</div>}
         <div className="wordGrid">
           {answers.map((answer, wordIndex) => (
@@ -187,7 +167,7 @@ function App() {
               {Array(5)
                 .fill(null)
                 .map((_nullChar, index) => (
-                  <div key={index} className="letterBox">
+                  <div key={index} className="letterBox" style={{ color: "lightblue" }}>
                     {currentAnswerLetters[index] ? currentAnswerLetters[index].toUpperCase() : ""}
                   </div>
                 ))}
