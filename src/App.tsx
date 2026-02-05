@@ -53,7 +53,7 @@ function App() {
       {isLoading && (
         <div className="loader-container">
           <div className="spinner"></div>
-          <div className="loader-text">Loading words...</div>
+          <div className="loader-text">Loading word selection ...</div>
         </div>
       )}
 
