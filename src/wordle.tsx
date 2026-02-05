@@ -105,19 +105,13 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
 
       // Handle backspace
       if (key === "Backspace") {
-        setCurrentAnswer((prev) => {
-          if (prev.length > 0) return prev.slice(0, -1);
-          return prev;
-        });
+        setCurrentAnswer((prev) => (prev.length > 0 ? prev.slice(0, -1) : prev));
         return;
       }
 
       // Accept only alpha characters (a-z, A-Z)
       if (/^[a-zA-Z]$/.test(key)) {
-        setCurrentAnswer((prev) => {
-          if (prev.length < 5) return prev + key.toLowerCase();
-          return prev;
-        });
+        setCurrentAnswer((prev) => (prev.length < 5 ? prev + key.toLowerCase() : prev));
       }
     };
 
@@ -143,11 +137,7 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
       Array.from(currentWord).reduce(
         (acc, char, index) => {
           const matchedInAnswer = Array.from(answer)[index] === char;
-
-          if (!acc[char]) {
-            acc[char] = {};
-          }
-
+          if (!acc[char]) acc[char] = {};
           acc[char][index] = matchedInAnswer;
           return acc;
         },
