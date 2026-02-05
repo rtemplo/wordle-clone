@@ -8,8 +8,11 @@ const getRandomWord = (): string => {
 };
 
 function App() {
+  // Tracks the words used from the word pool.
   const [usedWords, setUsedWords] = useState<string[]>(() => [getRandomWord()]);
+  // Tracks the users submitted answers.
   const [answers, setAnswers] = useState<string[]>([]);
+  // What the user typed in but has not yet submitted.
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
   const [gameCompleted, setGameCompleted] = useState<boolean>(false);
 
@@ -19,6 +22,7 @@ function App() {
   const currentWordLetters = Array.from(currentWord);
   const attempts = answers.length;
 
+  // New Game started. Get another word.
   const getNewWord = () => {
     let newWord = "";
 
@@ -50,7 +54,6 @@ function App() {
       // Accept only alpha characters (a-z, A-Z)
       if (/^[a-zA-Z]$/.test(key)) {
         setCurrentAnswer((prev) => {
-          prev + key;
           if (prev.length < 5) return prev + key.toLowerCase();
           return prev;
         });
@@ -86,6 +89,16 @@ function App() {
     }
   }, [currentAnswer, currentWord]);
 
+  /**
+   * This function creates a map of each unique letter in the word and the indexes they are in.
+   * For example, for the word "apple", if the answer was "adore" the map would look like:
+   * {
+   *   a: { 0: true },
+   *   p: { 1: false, 2: false },
+   *   l: { 3: false },
+   *   e: { 4: true }
+   * }
+   */
   const getAnswerMatchMap = useCallback(
     (answer: string) =>
       currentWordLetters.reduce(
@@ -104,9 +117,12 @@ function App() {
     (answer: string, char: string, index: number): string => {
       if (!answer || !char) return "";
 
-      const charOccurence = (currentWord.match(new RegExp(char, "gi")) || []).length;
+      // Count occurrences of char in word to guess
+      const charOccurrence = (currentWord.match(new RegExp(char, "gi")) || []).length;
 
-      if (charOccurence >= 1) {
+      // Only attempt to color if char is in the word
+      if (charOccurrence >= 1) {
+        // Get map of character matches for the answer
         const answerMatchMap = getAnswerMatchMap(answer);
         const charPosMap = answerMatchMap[char];
 
