@@ -16,13 +16,16 @@ function App() {
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
   const [gameCompleted, setGameCompleted] = useState<boolean>(false);
 
-  const currentAnswerLetters = Array.from(currentAnswer);
-  const currentWordIndex = usedWords.length - 1;
-  const currentWord = usedWords[currentWordIndex];
-  const currentWordLetters = Array.from(currentWord);
-  const attempts = answers.length;
+  const currentWord = usedWords[usedWords.length - 1];
+  const noOfAttempts = answers.length;
+  const noMoreAttempts = noOfAttempts >= 6;
+  const gameFinished = gameCompleted || noMoreAttempts;
+  const wordEntryIncomplete = currentAnswer.length < 5;
+  const noEntryMade = currentAnswer.length === 0;
+  const showLetterPlaceHolder = !gameFinished && noEntryMade;
+  const showLetterEntry = !gameFinished && !noEntryMade;
 
-  // New Game started. Get another word.
+  // New Game started. Get another random word.
   const getNewWord = () => {
     let newWord = "";
 
@@ -33,7 +36,7 @@ function App() {
     return newWord;
   };
 
-  const submitWordHandler = useCallback(() => {
+  const submitWord = useCallback(() => {
     setAnswers((prev) => [...prev, currentAnswer]);
     setCurrentAnswer("");
 
@@ -42,16 +45,23 @@ function App() {
     }
   }, [currentAnswer, currentWord]);
 
-  const getInput = useCallback(
-    (event: KeyboardEvent) => {
-      if (gameCompleted) return;
+  useEffect(() => {
+    // Blur any focused button when user starts typing so enter key works for submission only
+    if (currentAnswer.length > 0 && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, [currentAnswer]);
+
+  useEffect(() => {
+    const getInput = (event: KeyboardEvent) => {
+      if (gameFinished) return;
 
       const key = event.key;
 
       // Ignore Enter if current answer is less than 5 letters
       if (key === "Enter" && currentAnswer.length < 5) return;
       // Submit on enter key press
-      if (key === "Enter" && currentAnswer.length === 5) submitWordHandler();
+      if (key === "Enter" && currentAnswer.length === 5) submitWord();
 
       // Handle backspace
       if (key === "Backspace") {
@@ -69,34 +79,14 @@ function App() {
           return prev;
         });
       }
-    },
-    [currentAnswer, gameCompleted, submitWordHandler],
-  );
+    };
 
-  useEffect(() => {
-    // Blur any focused button when user starts typing
-    if (currentAnswer.length > 0 && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-  }, [currentAnswer]);
-
-  useEffect(() => {
     document.addEventListener("keydown", getInput);
 
     return () => {
       document.removeEventListener("keydown", getInput);
     };
-  }, [getInput]);
-
-  useEffect(() => {}, []);
-
-  const resetGameHandler = () => {
-    const newWord = getNewWord();
-    setUsedWords((prev) => [...prev, newWord]);
-    setAnswers([]);
-    setCurrentAnswer("");
-    setGameCompleted(false);
-  };
+  }, [currentAnswer, gameFinished, submitWord]);
 
   /**
    * This function creates a map of each unique letter in the word and the indexes they are in.
@@ -110,7 +100,7 @@ function App() {
    */
   const getAnswerMatchMap = useCallback(
     (answer: string) =>
-      currentWordLetters.reduce(
+      Array.from(currentWord).reduce(
         (acc, char, index) => {
           const matchedInAnswer = Array.from(answer)[index] === char;
 
@@ -123,18 +113,18 @@ function App() {
         },
         {} as Record<string, Record<number, boolean>>,
       ),
-    [currentWordLetters],
+    [currentWord],
   );
 
   const getLetterBoxColorClass = useCallback(
     (answer: string, char: string, index: number): string => {
       if (!answer || !char) return "";
 
-      // Count occurrences of char in word to guess
-      const charOccurrence = (currentWord.match(new RegExp(char, "gi")) || []).length;
+      // Count occurrences of letter in word to guess
+      const letterOccurrence = (currentWord.match(new RegExp(char, "gi")) || []).length;
 
-      // Only attempt to color if char is in the word
-      if (charOccurrence >= 1) {
+      // Only attempt to color if letter is in the word
+      if (letterOccurrence >= 1) {
         // Get map of character matches for the answer
         const answerMatchMap = getAnswerMatchMap(answer);
         const charPosMap = answerMatchMap[char];
@@ -150,21 +140,27 @@ function App() {
         }
       }
 
+      // letter not in word
       return "";
     },
     [getAnswerMatchMap, currentWord],
   );
 
-  const disableSubmit = currentAnswer.length < 5;
-  const showLetterPlaceHolder = currentAnswer.length < 1 && attempts < 6 && !gameCompleted;
+  const resetGameHandler = () => {
+    const newWord = getNewWord();
+    setUsedWords((prev) => [...prev, newWord]);
+    setAnswers([]);
+    setCurrentAnswer("");
+    setGameCompleted(false);
+  };
 
   return (
     <div className="container">
       <div className="gameLayer" style={{ position: "relative" }}>
-        <div className="currentWordHint">{usedWords[usedWords.length - 1]?.toUpperCase()}</div>
+        {!gameFinished && <div className="currentWordHint">{usedWords[usedWords.length - 1]?.toUpperCase()}</div>}
         <div className="title">fWORDLE</div>
         {gameCompleted && <div className="status">🎉 You won! 🎉</div>}
-        {attempts >= 6 && (
+        {noMoreAttempts && (
           <>
             <div className="wordReveal">{currentWord.toUpperCase()}</div>
             <div className="status">Sorry. No more attempts.</div>
@@ -173,38 +169,31 @@ function App() {
         <div className="wordGrid">
           {answers.map((answer, wordIndex) => (
             <div key={answer} className="word">
-              {answer
-                .toUpperCase()
-                .split("")
-                .map((char, charIndex) => {
-                  const colorClass = getLetterBoxColorClass(answer, char.toLowerCase(), charIndex);
+              {Array.from(answer).map((char, charIndex) => {
+                const colorClass = getLetterBoxColorClass(answer, char.toLowerCase(), charIndex);
 
-                  return (
-                    <div key={`ans_${wordIndex}_${char}_${charIndex}`} className={`letterBox ${colorClass}`}>
-                      {char}
-                    </div>
-                  );
-                })}
+                return (
+                  <div key={`ans_${wordIndex}_${char}_${charIndex}`} className={`letterBox ${colorClass}`}>
+                    {char.toUpperCase()}
+                  </div>
+                );
+              })}
             </div>
           ))}
           {showLetterPlaceHolder && (
             <div className="word">
-              <div className="letterBox"></div>
-              <div className="letterBox"></div>
-              <div className="letterBox"></div>
-              <div className="letterBox"></div>
-              <div className="letterBox"></div>
+              {Array.from({ length: 5 }, (_, index) => (
+                <div key={index} className="letterBox"></div>
+              ))}
             </div>
           )}
-          {!gameCompleted && attempts < 6 && currentAnswer.length > 0 && (
+          {showLetterEntry && (
             <div className="word">
-              {Array(5)
-                .fill(null)
-                .map((_nullChar, index) => (
-                  <div key={index} className="letterBox" style={{ color: "lightblue" }}>
-                    {currentAnswerLetters[index] ? currentAnswerLetters[index].toUpperCase() : ""}
-                  </div>
-                ))}
+              {Array.from({ length: 5 }, (_, index) => (
+                <div key={index} className="letterBox" style={{ color: "lightblue" }}>
+                  {currentAnswer[index]?.toUpperCase() ?? ""}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -212,12 +201,12 @@ function App() {
           <button type="button" className="controlBarButton" onClick={resetGameHandler}>
             New Game
           </button>
-          {!gameCompleted && attempts < 6 && (
+          {!gameFinished && (
             <button
               type="button"
-              className={`controlBarButton ${disableSubmit ? "disabledButton" : ""}`}
-              onClick={submitWordHandler}
-              disabled={disableSubmit}
+              className={`controlBarButton ${wordEntryIncomplete ? "disabledButton" : ""}`}
+              onClick={submitWord}
+              disabled={wordEntryIncomplete}
             >
               Submit Word
             </button>

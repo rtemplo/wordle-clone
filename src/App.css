@@ -13,7 +13,7 @@
   border: 2px solid rgba(0, 0, 0, 0.7);
   padding: 1rem;
   border-radius: 8px;
-  width: clamp(450px, 45vw, 650px);
+  width: clamp(450px, 650px, 45vw);
   min-height: 300px;
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.15),
@@ -34,12 +34,30 @@
   min-width: 70px;
   text-align: center;
   letter-spacing: 0.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: color 0.2s ease-in;
+}
+
+.currentWordHint::before {
+  content: "\1F441";
+  color: #777;
+  font-size: 1.5rem;
+  line-height: 1;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .currentWordHint:hover {
   color: #fff;
   transition: color 10s ease-out;
+}
+
+.currentWordHint:hover::before {
+  opacity: 0; /* hide eye when word shows */
 }
 
 .title {
@@ -89,6 +107,7 @@
   font-size: 1.5rem;
   font-weight: bold;
   text-transform: uppercase;
+  font-family: "Courier New", Courier, monospace;
 }
 
 .greenLetterBox {
