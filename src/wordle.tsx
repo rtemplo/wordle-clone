@@ -12,10 +12,13 @@ const getRandomWord = (words: string[]): string => {
 const Wordle: React.FC<WordleProps> = ({ words }) => {
   // Tracks the words used from the word pool.
   const [usedWords, setUsedWords] = useState<string[]>(() => [getRandomWord(words)]);
+
   // Tracks the users submitted answers.
   const [answers, setAnswers] = useState<string[]>([]);
+
   // What the user typed in but has not yet submitted.
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
+
   const [gameCompleted, setGameCompleted] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
