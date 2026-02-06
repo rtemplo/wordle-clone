@@ -133,6 +133,35 @@
   border-color: #c9b458;
 }
 
+.incorrectLetters {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.incorrectLetterBox {
+  aspect-ratio: 1 / 1;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid #a0a0a0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-family: "Courier New", Courier, monospace;
+  background-color: #e0e0e0;
+  color: #555;
+  text-decoration-line: line-through;
+  text-decoration-color: #d11;
+  text-decoration-thickness: 1px;
+}
+
 .controlBar {
   margin: 1rem 0.8rem 0 0.8rem;
   padding: 0.8rem;

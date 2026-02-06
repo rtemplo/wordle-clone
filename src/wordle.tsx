@@ -16,6 +16,8 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   const [wordMatchMaps, setWordMatchMaps] = useState<Record<string, Record<string, Record<number, boolean>>>>({});
   // What the user typed in but has not yet submitted.
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
+  // Letters that didn't match any letter in the word.
+  const [incorrectLetters, setIncorrectLetters] = useState<Set<string>>(new Set());
 
   const wordToSolve = usedWords.at(-1) || "";
   const answers = Object.keys(wordMatchMaps);
@@ -27,6 +29,8 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   const noEntryMade = currentAnswer.length === 0;
   const showLetterPlaceHolder = !gameFinished && noEntryMade;
   const showLetterEntry = !gameFinished && !noEntryMade;
+  const wordToSolveSet = new Set(wordToSolve);
+  const hasIncorrectLetters = incorrectLetters.size > 0;
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -66,13 +70,16 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   );
 
   const submitWord = useCallback(() => {
+    const unmatchedLetters = [...currentAnswer].filter((char) => !wordToSolveSet.has(char));
+    setIncorrectLetters((prev) => new Set([...prev, ...unmatchedLetters].sort()));
+
     setWordMatchMaps((prev) => ({
       ...prev,
       [currentAnswer]: getAnswerMatchMap(currentAnswer),
     }));
 
     setCurrentAnswer("");
-  }, [currentAnswer, getAnswerMatchMap]);
+  }, [currentAnswer, getAnswerMatchMap, wordToSolveSet]);
 
   useEffect(() => {
     // Blur any focused button when user starts typing so enter key works for submission only
@@ -180,6 +187,8 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   const resetGameHandler = () => {
     const newWord = getNewWord();
     setUsedWords((prev) => [...prev, newWord]);
+    setWordMatchMaps({});
+    setIncorrectLetters(new Set());
     setCurrentAnswer("");
   };
 
@@ -239,6 +248,15 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
           </div>
         )}
       </div>
+      {hasIncorrectLetters && (
+        <div className="incorrectLetters">
+          {[...incorrectLetters].map((char) => (
+            <div key={char} className="incorrectLetterBox">
+              {char.toUpperCase()}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="controlBar">
         <button type="button" className="controlBarButton" onClick={resetGameHandler}>
           New Game
