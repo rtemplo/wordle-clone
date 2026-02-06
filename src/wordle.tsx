@@ -1,12 +1,78 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { IoMdCloseCircleOutline } from "react-icons/io";
 import "./wordle.css";
 
 interface WordleProps {
   words: string[];
 }
 
+export interface DictionaryEntry {
+  word: string;
+  phonetics: Phonetic[];
+  meanings: Meaning[];
+  license: License;
+  sourceUrls: string[];
+}
+
+export interface Phonetic {
+  text?: string;
+  audio?: string;
+}
+
+export interface Meaning {
+  partOfSpeech: string;
+  definitions: Definition[];
+  synonyms: string[];
+  antonyms: string[];
+}
+
+export interface Definition {
+  definition: string;
+  example?: string;
+  synonyms: string[];
+  antonyms: string[];
+}
+
+export interface License {
+  name: string;
+  url: string;
+}
+
 const getRandomWord = (words: string[]): string => {
   return words[Math.floor(Math.random() * words.length)];
+};
+
+interface DefinitionBoxProps {
+  entry: DictionaryEntry;
+  word: string;
+  onClose: () => void;
+}
+
+const DefinitionBox: React.FC<DefinitionBoxProps> = ({ entry, word, onClose }) => {
+  return (
+    <div className="definitionBox">
+      <div className="definitionHeader">
+        <div>{word.toUpperCase()}</div>
+        <button type="button" className="definitionCloseButton" onClick={onClose}>
+          <IoMdCloseCircleOutline aria-hidden="true" focusable="false" />
+        </button>
+      </div>
+      {entry.meanings.length === 0 && <p>No definition found.</p>}
+      {entry.meanings.map((meaning, meaningIndex) => (
+        <div key={`meaning_${meaningIndex}`}>
+          <strong>{meaning.partOfSpeech}</strong>
+          <ul>
+            {meaning.definitions.map((def, defIndex) => (
+              <li key={`def_${defIndex}`}>
+                {def.definition}
+                {def.example && <em> (e.g., {def.example})</em>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
 };
 
 const Wordle: React.FC<WordleProps> = ({ words }) => {
@@ -18,6 +84,8 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
   // Letters that didn't match any letter in the word.
   const [incorrectLetters, setIncorrectLetters] = useState<Set<string>>(new Set());
+  const [definitionCache, setDefinitionCache] = useState<{ [key: string]: DictionaryEntry } | undefined>(undefined);
+  const [showDefinition, setShowDefinition] = useState<boolean>(false);
 
   const wordToSolve = usedWords.at(-1) || "";
   const answers = Object.keys(wordMatchMaps);
@@ -190,7 +258,64 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
     setWordMatchMaps({});
     setIncorrectLetters(new Set());
     setCurrentAnswer("");
+    setDefinitionCache(undefined);
+    setShowDefinition(false);
   };
+
+  const handleGetDefinition = useCallback(
+    (word: string) => {
+      const fetchDefinition = async () => {
+        const baseUrl = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+        try {
+          const response = await fetch(`${baseUrl}${word}`);
+          if (!response.ok) {
+            if (response.status === 404) {
+              console.log(`No definition found for the word: ${word}`);
+              setDefinitionCache({
+                [word]: { word, phonetics: [], meanings: [], license: { name: "", url: "" }, sourceUrls: [] },
+              });
+              return;
+            }
+            throw new Error("Failed to fetch definition");
+          }
+          const data = (await response.json()) as DictionaryEntry[];
+          setDefinitionCache({ [word]: data[0] });
+        } catch (error) {
+          console.error("Error fetching definition:", error);
+        }
+      };
+
+      if (definitionCache?.[word]) {
+        setShowDefinition(true);
+        return;
+      }
+
+      fetchDefinition();
+    },
+    [definitionCache],
+  );
+
+  useEffect(() => {
+    if (definitionCache?.[wordToSolve].meanings) {
+      setShowDefinition(true);
+    }
+  }, [definitionCache, wordToSolve]);
+
+  useEffect(() => {
+    if (!showDefinition) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowDefinition(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showDefinition]);
 
   return (
     <div className="gameLayer" style={{ position: "relative" }} onPointerDown={focusInput}>
@@ -208,13 +333,24 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
         onChange={handleInputChange}
         onKeyDown={handleInputKeyDown}
       />
+      {showDefinition && definitionCache?.[wordToSolve] && (
+        <DefinitionBox
+          entry={definitionCache[wordToSolve]}
+          word={wordToSolve}
+          onClose={() => setShowDefinition(false)}
+        />
+      )}
       {!gameFinished && <div className="currentWordHint">{usedWords[usedWords.length - 1]?.toUpperCase()}</div>}
       <div className="title">fWORDLE</div>
       {wordSolved && <div className="status">🎉 You won! 🎉</div>}
-      {noMoreAttempts && (
+      {(wordSolved || noMoreAttempts) && (
         <>
-          <div className="wordReveal">{wordToSolve.toUpperCase()}</div>
-          <div className="status">Sorry. No more attempts.</div>
+          <div className="wordReveal">
+            <button type="button" className="wordRevealButton" onClick={() => handleGetDefinition(wordToSolve)}>
+              {wordToSolve.toUpperCase()}
+            </button>
+          </div>
+          {noMoreAttempts && <div className="status">Sorry. No more attempts.</div>}
         </>
       )}
       <div className="wordGrid">
