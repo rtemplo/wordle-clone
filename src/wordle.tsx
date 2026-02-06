@@ -341,7 +341,23 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
         />
       )}
       {!gameFinished && <div className="currentWordHint">{usedWords[usedWords.length - 1]?.toUpperCase()}</div>}
-      <div className="title">fWORDLE</div>
+      <div className="title">
+        <div className="word">
+          <div className="titleLetter">W</div>
+          <div className="titleLetter">O</div>
+          <div className="titleLetter">R</div>
+          <div className="titleLetter">D</div>
+          <div className="titleLetter">L</div>
+          <div className="titleLetter">E</div>
+        </div>
+        <div className="subtitle">
+          <div className="subtitleLetter">C</div>
+          <div className="subtitleLetter">L</div>
+          <div className="subtitleLetter">O</div>
+          <div className="subtitleLetter">N</div>
+          <div className="subtitleLetter">E</div>
+        </div>
+      </div>
       {wordSolved && <div className="status">🎉 You won! 🎉</div>}
       {(wordSolved || noMoreAttempts) && (
         <>
@@ -377,7 +393,7 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
         {showLetterEntry && (
           <div className="word">
             {Array.from({ length: 5 }, (_, index) => (
-              <div key={index} className="letterBox" style={{ color: "lightblue" }}>
+              <div key={index} className="letterBox" style={{ color: "blue" }}>
                 {currentAnswer[index]?.toUpperCase() ?? ""}
               </div>
             ))}
