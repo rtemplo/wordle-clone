@@ -1,0 +1,46 @@
+.wordReveal {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background-color: #2d2d2d;
+  color: transparent;
+  border-radius: 5px;
+  cursor: help;
+  user-select: none;
+  min-width: 70px;
+  text-align: center;
+  letter-spacing: 0.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease-in;
+}
+
+.wordReveal::before {
+  content: "\1F441";
+  color: #777;
+  font-size: 1.5rem;
+  line-height: 1;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.wordReveal:hover {
+  color: #fff;
+  transition: color 10s ease-out;
+}
+
+.wordReveal:hover::before {
+  opacity: 0; /* hide eye when word shows */
+}
+
+@media (prefers-color-scheme: light) {
+  .wordReveal {
+    background-color: #e3e3e3;
+  }
+  .wordReveal:hover {
+    color: #1f1f1f;
+  }
+}

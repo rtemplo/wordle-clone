@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import Wordle from "./wordle";
+import Wordle from "./Wordle";
 import { words as backupWords } from "./words";
 import "./App.css";
 

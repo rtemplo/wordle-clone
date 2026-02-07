@@ -1,0 +1,24 @@
+.showDefinition {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid;
+  letter-spacing: 0.1rem;
+}
+
+.showDefinitionButton {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 0;
+}
+
+.status {
+  font-size: 1.2rem;
+  margin: 0.5rem 0;
+}

@@ -1,85 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { IoMdCloseCircleOutline } from "react-icons/io";
-import "./wordle.css";
+import AnswerEntry from "./components/AnswerEntry";
+import ControlBar from "./components/ControlBar/ControlBar";
+import DefinitionBox from "./components/DefinitionBox";
+import InfoBar from "./components/InfoBar/InfoBar";
+import ListAnswers from "./components/ListAnswers";
+import Logo from "./components/Logo";
+import WordReveal from "./components/WordReveal";
+import WrongLetters from "./components/WrongLetters";
+import type { DictionaryEntry, WordMatchMap } from "./types";
+import "./Wordle.css";
 
 interface WordleProps {
   words: string[];
-}
-
-export interface DictionaryEntry {
-  word: string;
-  phonetics: Phonetic[];
-  meanings: Meaning[];
-  license: License;
-  sourceUrls: string[];
-}
-
-export interface Phonetic {
-  text?: string;
-  audio?: string;
-}
-
-export interface Meaning {
-  partOfSpeech: string;
-  definitions: Definition[];
-  synonyms: string[];
-  antonyms: string[];
-}
-
-export interface Definition {
-  definition: string;
-  example?: string;
-  synonyms: string[];
-  antonyms: string[];
-}
-
-export interface License {
-  name: string;
-  url: string;
 }
 
 const getRandomWord = (words: string[]): string => {
   return words[Math.floor(Math.random() * words.length)];
 };
 
-interface DefinitionBoxProps {
-  entry: DictionaryEntry;
-  word: string;
-  onClose: () => void;
-}
-
-const DefinitionBox: React.FC<DefinitionBoxProps> = ({ entry, word, onClose }) => {
-  return (
-    <div className="definitionBox">
-      <div className="definitionHeader">
-        <div>{word.toUpperCase()}</div>
-        <button type="button" className="definitionCloseButton" onClick={onClose}>
-          <IoMdCloseCircleOutline aria-hidden="true" focusable="false" />
-        </button>
-      </div>
-      {entry.meanings.length === 0 && <p>No definition found.</p>}
-      {entry.meanings.map((meaning, meaningIndex) => (
-        <div key={`meaning_${meaningIndex}`}>
-          <strong>{meaning.partOfSpeech}</strong>
-          <ul>
-            {meaning.definitions.map((def, defIndex) => (
-              <li key={`def_${defIndex}`}>
-                {def.definition}
-                {def.example && <em> (e.g., {def.example})</em>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  );
-};
-
 const Wordle: React.FC<WordleProps> = ({ words }) => {
   // Tracks the words used from the word pool.
   const [usedWords, setUsedWords] = useState<string[]>(() => [getRandomWord(words)]);
   // Maps each answer to a map of letter positions and whether they matched the current word.
-  const [wordMatchMaps, setWordMatchMaps] = useState<Record<string, Record<string, Record<number, boolean>>>>({});
+  const [wordMatchMaps, setWordMatchMaps] = useState<WordMatchMap>({});
   // What the user typed in but has not yet submitted.
   const [currentAnswer, setCurrentAnswer] = useState<string>("");
   // Letters that didn't match any letter in the word.
@@ -94,11 +37,8 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   const noMoreAttempts = noOfAttempts >= 6;
   const gameFinished = wordSolved || noMoreAttempts;
   const wordEntryIncomplete = currentAnswer.length < 5;
-  const noEntryMade = currentAnswer.length === 0;
-  const showLetterPlaceHolder = !gameFinished && noEntryMade;
-  const showLetterEntry = !gameFinished && !noEntryMade;
   const wordToSolveSet = new Set(wordToSolve);
-  const hasIncorrectLetters = incorrectLetters.size > 0;
+  const showIncorrectLetters = incorrectLetters.size > 0 && !gameFinished;
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -228,30 +168,6 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
     };
   }, [currentAnswer, gameFinished, submitWord]);
 
-  const getLetterBoxColorClass = useCallback(
-    (answer: string, char: string, index: number): string => {
-      if (!answer || !char) return "";
-
-      // Get map of character matches for the answer.
-      const charPosMap = wordMatchMaps[answer] ? wordMatchMaps[answer][char] : undefined;
-
-      // Only attempt to color if letter is in the word.
-      if (charPosMap) {
-        // Letter is in the correct position.
-        const isInCorrectPosition = Boolean(charPosMap[index]);
-        if (isInCorrectPosition) return "greenLetterBox";
-
-        // Letter is in the word but at another position AND that position is not already matched by the same letter.
-        const openPositionsInWord = Object.values(charPosMap).some((position) => position === false);
-        if (openPositionsInWord) return "yellowLetterBox";
-      }
-
-      // Letter not in word.
-      return "";
-    },
-    [wordMatchMaps],
-  );
-
   const resetGameHandler = () => {
     const newWord = getNewWord();
     setUsedWords((prev) => [...prev, newWord]);
@@ -318,7 +234,7 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   }, [showDefinition]);
 
   return (
-    <div className="gameLayer" style={{ position: "relative" }} onPointerDown={focusInput}>
+    <div className="gameLayer" onPointerDown={focusInput}>
       <input
         ref={inputRef}
         className="hiddenInput"
@@ -333,97 +249,39 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
         onChange={handleInputChange}
         onKeyDown={handleInputKeyDown}
       />
-      {showDefinition && definitionCache?.[wordToSolve] && (
-        <DefinitionBox
-          entry={definitionCache[wordToSolve]}
-          word={wordToSolve}
-          onClose={() => setShowDefinition(false)}
-        />
-      )}
-      {!gameFinished && <div className="currentWordHint">{usedWords[usedWords.length - 1]?.toUpperCase()}</div>}
-      <div className="title">
-        <div className="word">
-          <div className="titleLetter">W</div>
-          <div className="titleLetter">O</div>
-          <div className="titleLetter">R</div>
-          <div className="titleLetter">D</div>
-          <div className="titleLetter">L</div>
-          <div className="titleLetter">E</div>
-        </div>
-        <div className="subtitle">
-          <div className="subtitleLetter">C</div>
-          <div className="subtitleLetter">L</div>
-          <div className="subtitleLetter">O</div>
-          <div className="subtitleLetter">N</div>
-          <div className="subtitleLetter">E</div>
-        </div>
-      </div>
-      {wordSolved && <div className="status">🎉 You won! 🎉</div>}
-      {(wordSolved || noMoreAttempts) && (
-        <>
-          <div className="wordReveal">
-            <button type="button" className="wordRevealButton" onClick={() => handleGetDefinition(wordToSolve)}>
-              {wordToSolve.toUpperCase()}
-            </button>
-          </div>
-          {noMoreAttempts && <div className="status">Sorry. No more attempts.</div>}
-        </>
-      )}
-      <div className="wordGrid">
-        {answers.map((answer, wordIndex) => (
-          <div key={`${answer}_${wordIndex}`} className="word">
-            {Array.from(answer).map((char, charIndex) => {
-              const colorClass = getLetterBoxColorClass(answer, char.toLowerCase(), charIndex);
 
-              return (
-                <div key={`ans_${wordIndex}_${char}_${charIndex}`} className={`letterBox ${colorClass}`}>
-                  {char.toUpperCase()}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-        {showLetterPlaceHolder && (
-          <div className="word">
-            {Array.from({ length: 5 }, (_, index) => (
-              <div key={index} className="letterBox"></div>
-            ))}
-          </div>
-        )}
-        {showLetterEntry && (
-          <div className="word">
-            {Array.from({ length: 5 }, (_, index) => (
-              <div key={index} className="letterBox" style={{ color: "blue" }}>
-                {currentAnswer[index]?.toUpperCase() ?? ""}
-              </div>
-            ))}
-          </div>
-        )}
+      <DefinitionBox
+        show={showDefinition}
+        entry={definitionCache?.[wordToSolve]}
+        word={wordToSolve}
+        onClose={() => setShowDefinition(false)}
+      />
+
+      <WordReveal show={!gameFinished} word={wordToSolve} />
+
+      <Logo />
+
+      <InfoBar
+        show={gameFinished}
+        wordToSolve={wordToSolve}
+        wordSolved={wordSolved}
+        noMoreAttempts={noMoreAttempts}
+        getDefinition={() => handleGetDefinition(wordToSolve)}
+      />
+
+      <div className="wordGrid">
+        <ListAnswers answers={answers} wordMatchMaps={wordMatchMaps} />
+        <AnswerEntry show={!gameFinished} currentAnswer={currentAnswer} />
       </div>
-      {hasIncorrectLetters && (
-        <div className="incorrectLetters">
-          {[...incorrectLetters].map((char) => (
-            <div key={char} className="incorrectLetterBox">
-              {char.toUpperCase()}
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="controlBar">
-        <button type="button" className="controlBarButton" onClick={resetGameHandler}>
-          New Game
-        </button>
-        {!gameFinished && (
-          <button
-            type="button"
-            className={`controlBarButton ${wordEntryIncomplete ? "disabledButton" : ""}`}
-            onClick={submitWord}
-            disabled={wordEntryIncomplete}
-          >
-            Submit Word
-          </button>
-        )}
-      </div>
+
+      <WrongLetters show={showIncorrectLetters} incorrectLetters={Array.from(incorrectLetters)} />
+
+      <ControlBar
+        gameFinished={gameFinished}
+        wordEntryIncomplete={wordEntryIncomplete}
+        resetGameHandler={resetGameHandler}
+        submitWord={submitWord}
+      />
     </div>
   );
 };
