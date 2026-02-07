@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import Wordle from "./Wordle";
 import { words as backupWords } from "./words";
 import "./App.css";
+import Wordle from "./Wordle";
 
 function App() {
   const [words, setWords] = useState<string[]>([]);
