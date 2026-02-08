@@ -14,13 +14,26 @@ interface WordleProps {
   words: string[];
 }
 
-const getRandomWord = (words: string[]): string => {
-  return words[Math.floor(Math.random() * words.length)];
+const fetchWordDefinition = async (word: string): Promise<DictionaryEntry | undefined> => {
+  const baseUrl = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+
+  try {
+    const response = await fetch(`${baseUrl}${word}`);
+    if (response.ok) {
+      const definition = (await response.json()) as DictionaryEntry[];
+      return definition[0];
+    } else {
+      return undefined;
+    }
+  } catch (_error) {
+    return undefined;
+  }
 };
 
 const Wordle: React.FC<WordleProps> = ({ words }) => {
+  const [wordList, setWordList] = useState<string[]>(words);
   // Tracks the words used from the word pool.
-  const [usedWords, setUsedWords] = useState<string[]>(() => [getRandomWord(words)]);
+  const [usedWords, setUsedWords] = useState<string[]>([]);
   // Maps each answer to a map of letter positions and whether they matched the current word.
   const [wordMatchMaps, setWordMatchMaps] = useState<WordMatchMap>({});
   // What the user typed in but has not yet submitted.
@@ -42,16 +55,31 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // New Game started. Get another random word.
-  const getNewWord = () => {
-    let newWord = "";
+  const getRandomWord = useCallback(
+    async (words: string[]): Promise<string> => {
+      const updatedWords = [...words].filter((word) => !usedWords.includes(word));
+      const randomWord = updatedWords[Math.floor(Math.random() * updatedWords.length)];
+      const definition = await fetchWordDefinition(randomWord);
 
-    do {
-      newWord = getRandomWord(words);
-    } while (usedWords.includes(newWord));
+      if (definition && definition.meanings.length > 0) {
+        setWordList(updatedWords);
+        setDefinitionCache({ [randomWord]: definition });
+        return definition.word;
+      } else {
+        return getRandomWord(words.filter((word) => word !== randomWord));
+      }
+    },
+    [usedWords],
+  );
 
-    return newWord;
-  };
+  const getNewWord = useCallback(async () => {
+    const newWord = await getRandomWord(wordList);
+    setUsedWords((prev) => [...prev, newWord]);
+  }, [getRandomWord, wordList]);
+
+  useEffect(() => {
+    if (usedWords.length === 0) getNewWord();
+  }, [getNewWord, usedWords.length]);
 
   /**
    * This function creates a map of each unique letter in the word and the indexes they are in.
@@ -169,53 +197,13 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
   }, [currentAnswer, gameFinished, submitWord]);
 
   const resetGameHandler = () => {
-    const newWord = getNewWord();
-    setUsedWords((prev) => [...prev, newWord]);
     setWordMatchMaps({});
     setIncorrectLetters(new Set());
     setCurrentAnswer("");
     setDefinitionCache(undefined);
     setShowDefinition(false);
+    getNewWord();
   };
-
-  const handleGetDefinition = useCallback(
-    (word: string) => {
-      const fetchDefinition = async () => {
-        const baseUrl = "https://api.dictionaryapi.dev/api/v2/entries/en/";
-        try {
-          const response = await fetch(`${baseUrl}${word}`);
-          if (!response.ok) {
-            if (response.status === 404) {
-              console.log(`No definition found for the word: ${word}`);
-              setDefinitionCache({
-                [word]: { word, phonetics: [], meanings: [], license: { name: "", url: "" }, sourceUrls: [] },
-              });
-              return;
-            }
-            throw new Error("Failed to fetch definition");
-          }
-          const data = (await response.json()) as DictionaryEntry[];
-          setDefinitionCache({ [word]: data[0] });
-        } catch (error) {
-          console.error("Error fetching definition:", error);
-        }
-      };
-
-      if (definitionCache?.[word]) {
-        setShowDefinition(true);
-        return;
-      }
-
-      fetchDefinition();
-    },
-    [definitionCache],
-  );
-
-  useEffect(() => {
-    if (definitionCache?.[wordToSolve].meanings) {
-      setShowDefinition(true);
-    }
-  }, [definitionCache, wordToSolve]);
 
   useEffect(() => {
     if (!showDefinition) return;
@@ -266,7 +254,7 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
         wordToSolve={wordToSolve}
         wordSolved={wordSolved}
         noMoreAttempts={noMoreAttempts}
-        getDefinition={() => handleGetDefinition(wordToSolve)}
+        showDefinition={setShowDefinition}
       />
 
       <div className="wordGrid">

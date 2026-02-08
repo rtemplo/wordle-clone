@@ -5,14 +5,14 @@ const InfoBar: React.FC<{
   wordToSolve: string;
   wordSolved: boolean;
   noMoreAttempts: boolean;
-  getDefinition: () => void;
-}> = ({ show, wordToSolve, wordSolved, noMoreAttempts, getDefinition }) => {
+  showDefinition: (show: boolean) => void;
+}> = ({ show, wordToSolve, wordSolved, noMoreAttempts, showDefinition }) => {
   if (!show) return null;
   return (
     <>
       {wordSolved && <div className="status">🎉 You won! 🎉</div>}
       <div className="showDefinition">
-        <button type="button" className="showDefinitionButton" onClick={getDefinition}>
+        <button type="button" className="showDefinitionButton" onClick={() => showDefinition(true)}>
           {wordToSolve.toUpperCase()}
         </button>
       </div>
