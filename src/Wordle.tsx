@@ -16,18 +16,30 @@ interface WordleProps {
 }
 
 const fetchWordDefinition = async (word: string): Promise<DictionaryEntry | undefined> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
   const baseUrl = "https://api.dictionaryapi.dev/api/v2/entries/en/";
 
   try {
-    const response = await fetch(`${baseUrl}${word}`);
+    const response = await fetch(`${baseUrl}${word}`, { signal: controller.signal });
     if (response.ok) {
       const definition = (await response.json()) as DictionaryEntry[];
       return definition[0];
     } else {
-      return undefined;
+      throw new Error(`The server has responded with an error for word "${word}".`);
     }
-  } catch (_error) {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      toast.error(`Fetch for definition of "${word}" aborted due to timeout.`);
+    } else if (error instanceof Error) {
+      toast.error(`Error fetching definition for "${word}": ${error.message}`);
+    } else {
+      toast.error(`An unknown error occurred while fetching definition for "${word}".`);
+    }
+
     return undefined;
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
@@ -119,10 +131,7 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
 
       setCurrentAnswer("");
     } else {
-      // If the word is not valid, we can choose to show an error or simply ignore it. Here we choose to ignore it.
-      // Optionally, you could add some UI feedback to the user that their word was not valid.
       toast.warn(`"${currentAnswer}" is not a valid word.`);
-      // console.log(`"${currentAnswer}" is not a valid word.`);
     }
   }, [currentAnswer, getAnswerMatchMap, wordToSolveSet]);
 
