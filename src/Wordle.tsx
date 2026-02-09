@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "react-toast";
 import AnswerEntry from "./components/AnswerEntry";
 import ControlBar from "./components/ControlBar/ControlBar";
 import DefinitionBox from "./components/DefinitionBox";
@@ -105,16 +106,24 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
     [wordToSolve],
   );
 
-  const submitWord = useCallback(() => {
-    const unmatchedLetters = [...currentAnswer].filter((char) => !wordToSolveSet.has(char));
-    setIncorrectLetters((prev) => new Set([...prev, ...unmatchedLetters].sort()));
+  const submitWord = useCallback(async () => {
+    const definition = await fetchWordDefinition(currentAnswer);
+    if (definition) {
+      const unmatchedLetters = [...currentAnswer].filter((char) => !wordToSolveSet.has(char));
+      setIncorrectLetters((prev) => new Set([...prev, ...unmatchedLetters].sort()));
 
-    setWordMatchMaps((prev) => ({
-      ...prev,
-      [currentAnswer]: getAnswerMatchMap(currentAnswer),
-    }));
+      setWordMatchMaps((prev) => ({
+        ...prev,
+        [currentAnswer]: getAnswerMatchMap(currentAnswer),
+      }));
 
-    setCurrentAnswer("");
+      setCurrentAnswer("");
+    } else {
+      // If the word is not valid, we can choose to show an error or simply ignore it. Here we choose to ignore it.
+      // Optionally, you could add some UI feedback to the user that their word was not valid.
+      toast.warn(`"${currentAnswer}" is not a valid word.`);
+      // console.log(`"${currentAnswer}" is not a valid word.`);
+    }
   }, [currentAnswer, getAnswerMatchMap, wordToSolveSet]);
 
   useEffect(() => {

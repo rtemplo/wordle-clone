@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { ToastContainer } from "react-toast";
 import { words as backupWords } from "./words";
 import "./App.css";
 import Wordle from "./Wordle";
@@ -58,6 +59,7 @@ function App() {
       )}
 
       {isReady && <Wordle words={words} />}
+      <ToastContainer delay={3000} position="bottom-center" />
     </div>
   );
 }
