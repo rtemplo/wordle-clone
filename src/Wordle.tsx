@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toast";
+import { fetchWordDefinition } from "./common/utils";
 import AnswerEntry from "./components/AnswerEntry";
 import ControlBar from "./components/ControlBar/ControlBar";
 import DefinitionBox from "./components/DefinitionBox";
@@ -13,37 +14,10 @@ import "./Wordle.css";
 
 interface WordleProps {
   words: string[];
+  validateWords?: boolean;
 }
 
-const fetchWordDefinition = async (word: string): Promise<DictionaryEntry | undefined> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-  const baseUrl = "https://api.dictionaryapi.dev/api/v2/entries/en/";
-
-  try {
-    const response = await fetch(`${baseUrl}${word}`, { signal: controller.signal });
-    if (response.ok) {
-      const definition = (await response.json()) as DictionaryEntry[];
-      return definition[0];
-    } else {
-      throw new Error(`The server has responded with an error for word "${word}".`);
-    }
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      toast.error(`Fetch for definition of "${word}" aborted due to timeout.`);
-    } else if (error instanceof Error) {
-      toast.error(`Error fetching definition for "${word}": ${error.message}`);
-    } else {
-      toast.error(`An unknown error occurred while fetching definition for "${word}".`);
-    }
-
-    return undefined;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-};
-
-const Wordle: React.FC<WordleProps> = ({ words }) => {
+const Wordle: React.FC<WordleProps> = ({ words, validateWords = true }) => {
   const [wordList, setWordList] = useState<string[]>(words);
   // Tracks the words used from the word pool.
   const [usedWords, setUsedWords] = useState<string[]>([]);
@@ -72,6 +46,9 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
     async (words: string[]): Promise<string> => {
       const updatedWords = [...words].filter((word) => !usedWords.includes(word));
       const randomWord = updatedWords[Math.floor(Math.random() * updatedWords.length)];
+
+      if (!validateWords) return new Promise((resolve) => resolve(randomWord));
+
       const definition = await fetchWordDefinition(randomWord);
 
       if (definition && definition.meanings.length > 0) {
@@ -82,7 +59,7 @@ const Wordle: React.FC<WordleProps> = ({ words }) => {
         return getRandomWord(words.filter((word) => word !== randomWord));
       }
     },
-    [usedWords],
+    [usedWords, validateWords],
   );
 
   const getNewWord = useCallback(async () => {
